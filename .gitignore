@@ -1,0 +1,6 @@
+_FOSSIL_
+manifest
+manifest.uuid
+*.xcodeproj/dmitry.*
+Frameworks/EllipticLicense/Builds/EllipticLicense.build
+build/
