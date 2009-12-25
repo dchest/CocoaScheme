@@ -8,58 +8,32 @@
 
 #import "Scheme.h"
 
+@interface NSString (SchemeAdditions)
+- (NSString *)sc_stringByConvertingDashes;
+@end
+@implementation NSString (SchemeAdditions)
+
+- (NSString *)sc_stringByConvertingDashes
+{
+  NSMutableString *result = [[NSMutableString alloc] init];
+  int i = 0;
+  for (NSString *part in [self componentsSeparatedByString:@"-"]) {
+    if (i++ > 0)
+      [result appendString:[part capitalizedString]];
+    else
+      [result appendString:part];
+  }
+  return [result autorelease];
+}
+
+@end
+
+
 @interface Scheme ()
 - (void)initializeTypes;
 @end
 
-
 static Scheme *sharedScheme;
-
-/* ObjC object */
-
-static int objc_object_type_tag = 0;
-
-static char *print_objc_object(s7_scheme *sc, void *val)
-{
-  return strdup([[NSString stringWithFormat:@"#<objc:object {%@} %@>", [(id)val className], [(id)val description]] UTF8String]);
-}
-
-static void free_objc_object(void *obj)
-{
-  [(id)obj release];
-}
-
-static bool equal_objc_object(void *val1, void *val2)
-{
-  return (bool)[(id)val1 isEqual:(id)val2];
-}
-
-static s7_pointer make_objc_object(s7_scheme *sc, s7_pointer args)
-{
-  if (args == s7_nil(sc))
-    return s7_nil(sc);
-
-  Class klass = (Class)s7_object_value(s7_car(args));
-  
-  return s7_make_object(sc, objc_object_type_tag, (void *)[klass alloc]);
-}
-
-static s7_pointer is_objc_object(s7_scheme *sc, s7_pointer args)
-{
-  return(s7_make_boolean(sc, s7_is_object(s7_car(args)) && s7_object_type(s7_car(args)) == objc_object_type_tag));
-}
-
-static s7_pointer objc_object_apply(s7_scheme *sc, s7_pointer obj, s7_pointer args)
-{
-  id object = s7_object_value(obj);
-  NSString *message = [NSString stringWithUTF8String:s7_string(s7_car(args))];
-  SEL selector = NSSelectorFromString(message);
-  id argObject = nil;
-  if (s7_cdr(args) != s7_nil(sc)) {
-    argObject = s7_object_value(s7_car(s7_cdr(args)));
-  }
-  return s7_make_object(sc, objc_object_type_tag, [object performSelector:selector withObject:argObject]);
-}
 
 /* ObjC class */
 
@@ -89,6 +63,102 @@ static s7_pointer make_objc_class(s7_scheme *sc, s7_pointer args)
 static s7_pointer is_objc_class(s7_scheme *sc, s7_pointer args)
 {
   return s7_make_boolean(sc, s7_is_object(s7_car(args)) && s7_object_type(s7_car(args)) == objc_class_type_tag);
+}
+
+/* ObjC object */
+
+static int objc_object_type_tag = 0;
+
+static char *print_objc_object(s7_scheme *sc, void *val)
+{
+  return strdup([[NSString stringWithFormat:@"#<objc:object {%@} %@>", [(id)val className], [(id)val description]] UTF8String]);
+}
+
+static void free_objc_object(void *obj)
+{
+  [(id)obj release];
+}
+
+static bool equal_objc_object(void *val1, void *val2)
+{
+  return (bool)[(id)val1 isEqual:(id)val2];
+}
+
+static s7_pointer make_objc_object(s7_scheme *sc, s7_pointer args)
+{
+  if (args == s7_nil(sc))
+    return s7_nil(sc);
+  
+  Class klass = (Class)s7_object_value(s7_car(args));
+  
+  return s7_make_object(sc, objc_object_type_tag, (void *)[klass alloc]);
+}
+
+static s7_pointer is_objc_object(s7_scheme *sc, s7_pointer args)
+{
+  return(s7_make_boolean(sc, s7_is_object(s7_car(args)) && s7_object_type(s7_car(args)) == objc_object_type_tag));
+}
+
+NSString *parse_method_call(s7_scheme *sc, s7_pointer args, NSArray **outArgs)
+{
+  NSMutableString *selectorName = [[NSMutableString alloc] init];
+  NSMutableArray *arguments = [[NSMutableArray alloc] init];
+  
+  s7_pointer arg = args;
+  BOOL odd = YES;
+  while (arg != s7_nil(sc)) {
+    if (odd) {
+      // parsing selector name
+      NSString *selectorPart = [NSString stringWithUTF8String:s7_symbol_name(s7_car(arg))];
+      [selectorName appendString:[selectorPart sc_stringByConvertingDashes]];
+    } else {
+      // parsing argument
+      [arguments addObject:(id)s7_object_value(s7_car(arg))];
+    }
+    arg = s7_cdr(arg);
+    odd = !odd;
+  }
+  *outArgs = arguments;
+  return selectorName;
+}
+
+static s7_pointer objc_object_apply(s7_scheme *sc, s7_pointer obj, s7_pointer args)
+{
+  id object = s7_object_value(obj);
+//  NSString *message = [NSString stringWithUTF8String:s7_string(s7_car(args))];
+//  SEL selector = NSSelectorFromString(message);
+//  id argObject = nil;
+//  if (s7_cdr(args) != s7_nil(sc)) {
+//    argObject = s7_object_value(s7_car(s7_cdr(args)));
+//  }
+  NSArray *arguments = nil;
+  NSString *selectorName = parse_method_call(sc, args, &arguments);
+  SEL selector = NSSelectorFromString(selectorName);
+  
+  NSMethodSignature *sig = [object methodSignatureForSelector:selector];
+  if (!sig) {
+    NSLog(@"No signature for method: %@", selectorName);
+    return s7_nil(sc);
+  }
+  
+//  NSLog(@"Object: %@", object);
+//  NSLog(@"Method: %@", selectorName);
+//  NSLog(@"Args: %@", arguments);
+  
+  NSInvocation *inv = [NSInvocation invocationWithMethodSignature:sig];
+  [inv setTarget:object];
+  [inv setSelector:selector];
+  int i = 2;
+  for (id argument in arguments) {
+    [inv setArgument:&argument atIndex:i];
+    i++;
+  }
+  [inv retainArguments];
+  [inv invoke];
+  id result = nil;
+  [inv getReturnValue:&result];
+
+  return s7_make_object(sc, objc_object_type_tag, result);
 }
 
 /* Utility */
@@ -126,7 +196,7 @@ static s7_pointer objc_string_to_string(s7_scheme *sc, s7_pointer args)
 
 - (void)initializeTypes
 {
-  objc_class_type_tag = s7_new_type("objc:class", print_objc_class, NULL, equal_objc_class, NULL, NULL, NULL);
+  objc_class_type_tag = s7_new_type("objc:class", print_objc_class, NULL, equal_objc_class, NULL, objc_object_apply, NULL);
   s7_define_function(scheme_, "string->objc:class", make_objc_class, 1, 0, false, "(make-objc:class \"NSObject\") returns an Objective-C Class");
   s7_define_function(scheme_, "objc:class?", is_objc_class, 1, 0, false, "(objc:class? anything) returns #t if its argument is an Objective-C Class");
 
