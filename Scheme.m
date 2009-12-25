@@ -36,17 +36,17 @@ static bool equal_objc_object(void *val1, void *val2)
 
 static s7_pointer make_objc_object(s7_scheme *sc, s7_pointer args)
 {
-  if (args == s7_nil(sharedScheme.scheme))
-    return s7_nil(sharedScheme.scheme);
+  if (args == s7_nil(sc))
+    return s7_nil(sc);
 
   Class klass = (Class)s7_object_value(s7_car(args));
   
-  return s7_make_object(sharedScheme.scheme, objc_object_type_tag, (void *)[klass alloc]);
+  return s7_make_object(sc, objc_object_type_tag, (void *)[klass alloc]);
 }
 
 static s7_pointer is_objc_object(s7_scheme *sc, s7_pointer args)
 {
-  return(s7_make_boolean(sharedScheme.scheme, s7_is_object(s7_car(args)) && s7_object_type(s7_car(args)) == objc_object_type_tag));
+  return(s7_make_boolean(sc, s7_is_object(s7_car(args)) && s7_object_type(s7_car(args)) == objc_object_type_tag));
 }
 
 static s7_pointer objc_object_apply(s7_scheme *sc, s7_pointer obj, s7_pointer args)
@@ -58,7 +58,7 @@ static s7_pointer objc_object_apply(s7_scheme *sc, s7_pointer obj, s7_pointer ar
   if (s7_cdr(args) != s7_nil(sc)) {
     argObject = s7_object_value(s7_car(s7_cdr(args)));
   }
-  return s7_make_object(sharedScheme.scheme, objc_object_type_tag, [object performSelector:selector withObject:argObject]);
+  return s7_make_object(sc, objc_object_type_tag, [object performSelector:selector withObject:argObject]);
 }
 
 /* ObjC class */
@@ -77,30 +77,30 @@ static bool equal_objc_class(void *val1, void *val2)
 
 static s7_pointer make_objc_class(s7_scheme *sc, s7_pointer args)
 {
-  if (args == s7_nil(sharedScheme.scheme))
-    return s7_nil(sharedScheme.scheme);
+  if (args == s7_nil(sc))
+    return s7_nil(sc);
   
   NSString *className = [NSString stringWithUTF8String:s7_string(s7_car(args))];
   Class klass = NSClassFromString(className);
   
-  return s7_make_object(sharedScheme.scheme, objc_class_type_tag, (void *)klass);
+  return s7_make_object(sc, objc_class_type_tag, (void *)klass);
 }
 
 static s7_pointer is_objc_class(s7_scheme *sc, s7_pointer args)
 {
-  return s7_make_boolean(sharedScheme.scheme, s7_is_object(s7_car(args)) && s7_object_type(s7_car(args)) == objc_class_type_tag);
+  return s7_make_boolean(sc, s7_is_object(s7_car(args)) && s7_object_type(s7_car(args)) == objc_class_type_tag);
 }
 
 /* Utility */
 
 static s7_pointer string_to_objc_string(s7_scheme *sc, s7_pointer args)
 {
-  return s7_make_object(sharedScheme.scheme, objc_object_type_tag, [NSString stringWithUTF8String:s7_string(s7_car(args))]);  
+  return s7_make_object(sc, objc_object_type_tag, [NSString stringWithUTF8String:s7_string(s7_car(args))]);  
 }
 
 static s7_pointer objc_string_to_string(s7_scheme *sc, s7_pointer args)
 {
-  return s7_make_string(sharedScheme.scheme, [(NSString *)s7_object_value(s7_car(args)) UTF8String]);
+  return s7_make_string(sc, [(NSString *)s7_object_value(s7_car(args)) UTF8String]);
 }
 
 @implementation Scheme
