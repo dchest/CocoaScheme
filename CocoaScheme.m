@@ -1,10 +1,15 @@
 #import <Foundation/Foundation.h>
+#import "Scheme.h"
 
-int main (int argc, const char * argv[]) {
-    NSAutoreleasePool * pool = [[NSAutoreleasePool alloc] init];
+int main (int argc, const char *argv[]) 
+{
+  NSAutoreleasePool * pool = [[NSAutoreleasePool alloc] init];
 
-    // insert code here...
-    NSLog(@"Hello, World!");
-    [pool drain];
-    return 0;
+  NSString *path = [[NSString stringWithUTF8String:argv[0]] stringByDeletingLastPathComponent];
+  
+  Scheme *sc = [Scheme sharedScheme];
+  [sc loadFile:[[[path stringByDeletingLastPathComponent] stringByDeletingLastPathComponent] stringByAppendingPathComponent:@"test.scm"]];
+  
+  [pool drain];
+  return 0;
 }

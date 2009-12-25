@@ -12,7 +12,8 @@
 @interface Scheme : NSObject {
   s7_scheme *scheme_;
 }
-
+@property(readonly, nonatomic) s7_scheme *scheme;
+          
 + (Scheme *)sharedScheme;
 - (void)loadFile:(NSString *)filename;
 - (void)loadURL:(NSURL *)url;
