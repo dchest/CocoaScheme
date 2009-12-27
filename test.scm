@@ -1,15 +1,14 @@
-(display "Applications directory name: ")
-;(define file-manager ((alloc-objc:object (string->objc:class "NSFileManager")) "init"))
-;(define test-path (string->objc:string "/Applications"))
-;(display 
-;  (objc:string->string (file-manager "displayNameAtPath:" test-path)))
-;(newline)
-;--------------------
+(define (@ x) (string->objc:string x))
+(define (@@ x) (objc:string->string x))
+
 (display
-  (objc:string->string 
-    (((string->objc:class "NSFileManager") 'default-manager) 'display-name-at-path: (string->objc:string "Applications"))))
+  (@@ (((string->objc:class "NSFileManager") 'default-manager) 'display-name-at-path: (@ "Applications"))))
+
 (newline)
+
 ;--------------------
+; GOAL, not implemented:
+; ~~~~~~~~~~~~~~~~~~~~~
 ;(define-class "Something"
 ;  (define-var 'x)
 ;  (define-var 'y)
