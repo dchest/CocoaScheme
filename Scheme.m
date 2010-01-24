@@ -8,6 +8,48 @@
 
 #import "Scheme.h"
 
+// C types
+// We don't use @encode because it gives a char *, but we need a single char for 'switch'
+#define _C_BITFIELD 'b'
+#define _C_C99_BOOL 'B'
+#define _C_CHAR 'c'
+#define _C_UNSIGNED_CHAR 'C'
+#define _C_DOUBLE 'd'
+#define _C_FLOAT 'f'
+#define _C_INT 'i'
+#define _C_UNSIGNED_INT 'I'
+#define _C_LONG 'l'
+#define _C_UNSIGNED_LONG 'L'
+#define _C_LONG_LONG 'q'
+#define _C_UNSIGNED_LONG_LONG 'Q'
+#define _C_SHORT 's'
+#define _C_UNSIGNED_SHORT 'S'
+#define _C_VOID 'v'
+#define _C_UNKNOWN '?'
+
+#define _C_ID '@'
+#define _C_CLASS '#'
+#define _C_POINTER '^'
+#define _C_STRING '*'
+
+#define _C_UNION '('
+#define _C_UNION_END ')'
+#define _C_ARRAY '['
+#define _C_ARRAY_END ']'
+#define _C_STRUCT '{'
+#define _C_STRUCT_END '}'
+#define _C_SELECTOR ':'
+
+#define _C_IN 'n'
+#define _C_INOUT 'N'
+#define _C_OUT 'o'
+#define _C_BYCOPY 'O'
+#define _C_CONST 'r'
+#define _C_BYREF 'R'
+#define _C_ONEWAY 'V'
+
+
+
 @interface NSString (SchemeAdditions)
 - (NSString *)sc_stringByConvertingDashes;
 @end
@@ -67,69 +109,52 @@ static s7_pointer is_objc_object(s7_scheme *sc, s7_pointer args)
                          && s7_object_type(s7_car(args)) == objc_id_type_tag));
 }
 
-NSString *parse_method_call(s7_scheme *sc, s7_pointer args, NSArray **outArgs)
+NSString *extract_selector_name(s7_scheme *sc, s7_pointer args)
 {
   NSMutableString *selectorName = [[NSMutableString alloc] init];
-  NSMutableArray *arguments = [[NSMutableArray alloc] init];
-
   s7_pointer arg = args;
-  BOOL odd = YES;
+  // extract only odd arguments
   while (arg != s7_nil(sc)) {
-    if (odd) {
-      // parsing selector name
-      NSString *selectorPart = [NSString stringWithUTF8String:s7_symbol_name(s7_car(arg))];
-      [selectorName appendString:[selectorPart sc_stringByConvertingDashes]];
-    } else {
-      // parsing argument
-      [arguments addObject:(id)s7_object_value(s7_car(arg))];
-    }
+    NSString *selectorPart = [NSString stringWithUTF8String:s7_symbol_name(s7_car(arg))];
+    [selectorName appendString:[selectorPart sc_stringByConvertingDashes]];
     arg = s7_cdr(arg);
-    odd = !odd;
+    if (arg == s7_nil(sc))
+        break;
+    arg = s7_cdr(arg);
   }
-  *outArgs = arguments;
-  return selectorName;
+  return [selectorName autorelease];
 }
 
 static s7_pointer objc_id_apply(s7_scheme *sc, s7_pointer obj, s7_pointer args)
 {
   id object = s7_object_value(obj);
-//  NSString *message = [NSString stringWithUTF8String:s7_string(s7_car(args))];
-//  SEL selector = NSSelectorFromString(message);
-//  id argObject = nil;
-//  if (s7_cdr(args) != s7_nil(sc)) {
-//    argObject = s7_object_value(s7_car(s7_cdr(args)));
-//  }
-  NSArray *arguments = nil;
-  NSString *selectorName = parse_method_call(sc, args, &arguments);
+  NSString *selectorName = extract_selector_name(sc, args);
   if ([selectorName length] == 0) {
     // return self
     return obj;
   }
   SEL selector = NSSelectorFromString(selectorName);
-
   NSMethodSignature *sig = [object methodSignatureForSelector:selector];
   if (!sig) {
     NSLog(@"No signature for method: %@", selectorName);
     return s7_nil(sc);
   }
-
-//  NSLog(@"Object: %@", object);
-//  NSLog(@"Method: %@", selectorName);
-//  NSLog(@"Args: %@", arguments);
-
   NSInvocation *inv = [NSInvocation invocationWithMethodSignature:sig];
   [inv setTarget:object];
   [inv setSelector:selector];
   int i = 2;
-  for (id argument in arguments) {
+  s7_pointer tmpargs = args;
+  // extract only even arguments
+  while (tmpargs != s7_nil(sc) &&
+         (tmpargs = s7_cdr(tmpargs)) != s7_nil(sc)) {
+    id argument = (id)s7_object_value(s7_car(tmpargs));
     [inv setArgument:&argument atIndex:i];
+    tmpargs = s7_cdr(tmpargs);
     i++;
   }
-  //[inv retainArguments];
   [inv invoke];
   id result = nil;
   [inv getReturnValue:&result];
-
   return s7_make_object(sc, objc_id_type_tag, result);
 }
 
@@ -201,6 +226,7 @@ static s7_pointer objc_string_to_string(s7_scheme *sc, s7_pointer args)
 - (void)finalize
 {
   s7_quit(scheme_);
+  [super finalize];
 }
 
 - (void)loadFile:(NSString *)filename
