@@ -24,6 +24,7 @@ int main (int argc, const char *argv[])
     // prepare some helpers
     [sc evalString:@"(defmacro class (name)"
                     " `(string->objc:class (symbol->string ',name)))"];
+    [sc evalString:@"(define that ())"];
     
     char buffer[512];
     NSMutableString *s = [[NSMutableString alloc] init];
@@ -49,7 +50,7 @@ int main (int argc, const char *argv[])
       }
       
       if ([s length] > 0 && [s characterAtIndex:0] != '\n') {
-        [sc evalString:[NSString stringWithFormat:@"(write %@)", s]];
+        [sc evalString:[NSString stringWithFormat:@"(begin (set! that %@) (write that))", s]];
         [s setString:@""];
         printf("\n");
       }
