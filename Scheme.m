@@ -322,7 +322,7 @@ static s7_pointer objc_id_apply(s7_scheme *sc, s7_pointer obj, s7_pointer args)
 
 static char *print_objc_object(s7_scheme *sc, void *val)
 {
-  return strdup([[NSString stringWithFormat:@"#<objc:object {%@} %@>", [(id)val className], [(id)val description]] UTF8String]);
+  return strdup([[NSString stringWithFormat:@"#<objc:id {%@} %@>", [(id)val className], [(id)val description]] UTF8String]);
 }
 
 static void free_objc_object(void *obj)
@@ -393,18 +393,18 @@ static s7_pointer objc_framework(s7_scheme *sc, s7_pointer args)
 
 - (void)initializeTypes
 {
-  objc_id_type_tag = s7_new_type("objc:object", print_objc_object, free_objc_object, equal_objc_id, NULL, objc_id_apply, NULL);
+  objc_id_type_tag = s7_new_type("objc:id", print_objc_object, free_objc_object, equal_objc_id, NULL, objc_id_apply, NULL);
 
   s7_define_function(scheme_, "string->objc:class", string_to_objc_class, 1, 0, false,
                      "(make-objc:class \"NSObject\") returns an Objective-C Class");
 
-  s7_define_function(scheme_, "alloc-objc:object", make_objc_object, 1, 0, false, "(make-objc:object class) allocs and returns an Objective-C object");
+  s7_define_function(scheme_, "alloc-objc:id", make_objc_object, 1, 0, false, "(alloc-objc:id class) allocs and returns an Objective-C object");
 
   s7_define_function(scheme_, "objc:id?", is_objc_object, 1, 0, false, "(objc:id? value) returns #t if its argument is an Objective-C id (object or class)");
 
   s7_define_function(scheme_, "string->objc:string", string_to_objc_string, 1, 0, false, "(string->objc:string \"string\") convert Scheme string to Objective-C NSString");
 
-  s7_define_function(scheme_, "objc:string->string", objc_string_to_string, 1, 0, false, "(objc:string->string objc:object-NSString) convert Objective-C NSString to Scheme string");
+  s7_define_function(scheme_, "objc:string->string", objc_string_to_string, 1, 0, false, "(objc:string->string objc:id-NSString) convert Objective-C NSString to Scheme string");
 
   s7_define_function(scheme_, "objc:framework", objc_framework, 1, 0, false, "(objc:framework \"name\") load Objective-C framework");
 }
