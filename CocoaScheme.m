@@ -26,12 +26,12 @@ int main (int argc, const char *argv[])
                     " `(string->objc:class (symbol->string ',name)))"];
     [sc evalString:@"(define that ())"]; // variable to hold last evaluation result
     
-    char buffer[512];
+    char buffer[2048];
     NSMutableString *s = [[NSMutableString alloc] init];
     while (1)
     {
       fprintf(stdout, "> ");
-      fgets(buffer, 512, stdin);
+      fgets(buffer, 2048, stdin);
       if (feof(stdin))
         return 0;
       [s appendFormat:@"%s", buffer];
