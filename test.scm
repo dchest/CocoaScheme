@@ -25,7 +25,7 @@
 (define (str x)
   (cond ((string? x) x)
         ((symbol? x) (symbol->string x))
-	((number? x) (number->string x))
+        ((number? x) (number->string x))
         ((objc:id? x)
           (if (eqv? 1 (x is-kind-of-class: (class NSString))) ; doesn't work yet, need
             (objc:string->string x)                        ; to return BOOL values
