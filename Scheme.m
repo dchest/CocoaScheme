@@ -177,13 +177,9 @@ static s7_pointer objc_id_apply(s7_scheme *sc, s7_pointer obj, s7_pointer args)
         [inv setArgument:&argument atIndex:i];
         break;
       }
-      case _C_CHAR: {
-        if (s7_is_boolean(a))
-          setarg(char, s7_boolean(sc, a), i, inv);
-        else
-          setarg(char, s7_integer(a), i, inv);
+      case _C_CHAR:
+        setarg(char, s7_is_boolean(a) ? s7_boolean(sc, a) : s7_integer(a), i, inv);
         break;
-      }
       case _C_UNSIGNED_CHAR:
         setarg(unsigned char, s7_integer(a), i, inv);
         break;
@@ -329,6 +325,5 @@ static s7_pointer objc_string_to_string(s7_scheme *sc, s7_pointer args)
 {
   s7_eval_c_string(scheme_, [string UTF8String]);
 }
-
 
 @end
