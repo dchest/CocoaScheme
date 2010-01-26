@@ -125,6 +125,24 @@ NSString *extract_selector_name(s7_scheme *sc, s7_pointer args)
   return [selectorName autorelease];
 }
 
+static id s7_pointer_to_id(s7_scheme *sc, s7_pointer p)
+{
+  if (s7_nil(sc) == p)
+    return [NSNull null];
+  if (s7_is_object(p) && s7_object_type(p) == objc_id_type_tag)
+    return s7_object_value(p);
+  if (s7_is_integer(p))
+    return [NSNumber numberWithLongLong:s7_integer(p)];
+  if (s7_is_real(p))
+    return [NSNumber numberWithDouble:s7_real(p)];
+  if (s7_is_boolean(p))
+    return [NSNumber numberWithBool:s7_boolean(sc, p)];
+  if (s7_is_string(p))
+    return [NSString stringWithUTF8String:s7_string(p)];
+  NSLog(@"Unsupported Scheme data type for conversion to Objective-C type");
+  return nil;
+}
+
 static s7_pointer objc_id_apply(s7_scheme *sc, s7_pointer obj, s7_pointer args)
 {
   id object = s7_object_value(obj);
@@ -147,7 +165,7 @@ static s7_pointer objc_id_apply(s7_scheme *sc, s7_pointer obj, s7_pointer args)
   // extract only even arguments
   while (tmpargs != s7_nil(sc) &&
          (tmpargs = s7_cdr(tmpargs)) != s7_nil(sc)) {
-    id argument = (id)s7_object_value(s7_car(tmpargs));
+    id argument = s7_pointer_to_id(sc, s7_car(tmpargs));
     [inv setArgument:&argument atIndex:i];
     tmpargs = s7_cdr(tmpargs);
     i++;

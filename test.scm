@@ -1,27 +1,28 @@
 ;; Arc syntax immitation, just for fun
-
-(defmacro mac (name . body)
-  `(defmacro ,name ,@body))
-
-(mac = (name . body)
-  `(define ,name ,@body))
-  ; todo: '=' should be universal setter
-
-(mac def (name args . body)
-  `(define (,name ,@args) ,@body))
-
-(def uniq () (gensym))
-
+;
+;(defmacro mac (name . body)
+;  `(defmacro ,name ,@body))
+;
+;(mac = (name . body)
+;  `(define ,name ,@body))
+;   todo: '=' should be universal setter
+;
+;(mac def (name args . body)
+;  `(define (,name ,@args) ,@body))
+;
+;(def uniq () (gensym))
+;
 ;; Macros
 
-(mac class (name)
+(defmacro class (name)
   `(string->objc:class (symbol->string ',name)))
 
 ;; Helpers
 
-(def @ (x) (string->objc:string x))
+(define (@ x)
+  (string->objc:string x))
 
-(def str (x)
+(define (str x)
   (cond ((string? x) x)
         ((symbol? x) (symbol->string x))
         ((objc:id? x)
@@ -31,16 +32,16 @@
                                                            ; always returns description
 ;; Test App
 
-(= file-manager
+(define file-manager
   ((class NSFileManager) 'default-manager))
 
-(= current-directory-path
+(define current-directory-path
   (file-manager 'current-directory-path))
 
-(def go (n)
+(define (go n)
   (let ((manager file-manager))
     (current-directory-path)
-    (manager display-name-at-path: (@ "/Applications")))
+    (manager display-name-at-path: "/Applications"))
     (if (> n 0)
       (go (- n 1))))
 
