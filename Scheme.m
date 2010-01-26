@@ -242,7 +242,10 @@ static s7_pointer objc_id_apply(s7_scheme *sc, s7_pointer obj, s7_pointer args)
     case _C_ID:
     case _C_CLASS: {
       get_return_value(id);
-      return s7_make_object(sc, objc_id_type_tag, _value);
+      if ([_value isKindOfClass:[NSString class]])
+        return s7_make_string(sc, [_value UTF8String]);
+      else
+        return s7_make_object(sc, objc_id_type_tag, _value);
     }
     case _C_CHAR: {
       get_return_value(char);
