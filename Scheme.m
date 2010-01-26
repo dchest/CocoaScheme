@@ -143,6 +143,9 @@ static id s7_pointer_to_id(s7_scheme *sc, s7_pointer p)
   return nil;
 }
 
+#define setarg(type, value, i, invocation) \
+        do { type v = (type)value; [invocation setArgument:&v atIndex:i]; } while(0)
+
 static s7_pointer objc_id_apply(s7_scheme *sc, s7_pointer obj, s7_pointer args)
 {
   id object = s7_object_value(obj);
@@ -162,11 +165,75 @@ static s7_pointer objc_id_apply(s7_scheme *sc, s7_pointer obj, s7_pointer args)
   [inv setSelector:selector];
   int i = 2;
   s7_pointer tmpargs = args;
+  //void *buffer = NULL; // for array and struct - declared here to free it after invocation
   // extract only even arguments
-  while (tmpargs != s7_nil(sc) &&
-         (tmpargs = s7_cdr(tmpargs)) != s7_nil(sc)) {
-    id argument = s7_pointer_to_id(sc, s7_car(tmpargs));
-    [inv setArgument:&argument atIndex:i];
+  while (tmpargs != s7_nil(sc) && (tmpargs = s7_cdr(tmpargs)) != s7_nil(sc)) {
+    s7_pointer a = s7_car(tmpargs);
+    char argtype = [sig getArgumentTypeAtIndex:i][0];
+    switch (argtype) {
+      case _C_ID:
+      case _C_CLASS: {
+        id argument = s7_pointer_to_id(sc, a);
+        [inv setArgument:&argument atIndex:i];
+        break;
+      }
+      case _C_CHAR: {
+        if (s7_is_boolean(a))
+          setarg(char, s7_boolean(sc, a), i, inv);
+        else
+          setarg(char, s7_integer(a), i, inv);
+        break;
+      }
+      case _C_UNSIGNED_CHAR:
+        setarg(unsigned char, s7_integer(a), i, inv);
+        break;
+      case _C_C99_BOOL:
+        setarg(_Bool, s7_boolean(sc, a), i, inv);
+        break;
+      case _C_SHORT:
+        setarg(short, s7_integer(a), i, inv);
+        break;
+      case _C_UNSIGNED_SHORT:
+        setarg(unsigned short, s7_integer(a), i, inv);
+        break;
+      case _C_INT:
+        setarg(int, s7_integer(a), i, inv);
+        break;
+      case _C_UNSIGNED_INT:
+        setarg(unsigned int, s7_integer(a), i, inv);
+        break;
+      case _C_LONG:
+        setarg(long, s7_integer(a), i, inv);
+        break;
+      case _C_UNSIGNED_LONG:
+        setarg(unsigned long, s7_integer(a), i, inv);
+        break;
+      case _C_LONG_LONG:
+        setarg(long long, s7_integer(a), i, inv);
+        break;
+      case _C_UNSIGNED_LONG_LONG:
+        setarg(unsigned long long, s7_integer(a), i, inv);
+        break;
+      case _C_DOUBLE:
+        setarg(double, s7_real(a), i, inv);
+        break;
+      case _C_FLOAT:
+        setarg(float, s7_real(a), i, inv);
+        break;
+      case _C_POINTER:
+        setarg(void*, s7_object_value(a), i, inv);
+        break;
+      case _C_ARRAY:
+      case _C_STRUCT:
+      case _C_SELECTOR: {
+        //NSUInteger length = [sig frameLength];
+        //buffer = malloc(length);
+        //memcpy(buffer, s7_object_value(a), length);
+        void *p = s7_object_value(a);
+        [inv setArgument:p atIndex:i];
+        break;        
+      }
+    }
     tmpargs = s7_cdr(tmpargs);
     i++;
   }
@@ -203,6 +270,7 @@ static s7_pointer objc_string_to_string(s7_scheme *sc, s7_pointer args)
 {
   return s7_make_string(sc, [(NSString *)s7_object_value(s7_car(args)) UTF8String]);
 }
+
 
 @implementation Scheme
 @synthesize scheme=scheme_;
