@@ -146,6 +146,9 @@ static id s7_pointer_to_id(s7_scheme *sc, s7_pointer p)
 #define setarg(type, value, i, invocation) \
         do { type v = (type)value; [invocation setArgument:&v atIndex:i]; } while(0)
 
+#define get_return_value(type) \
+        type _value; [inv getReturnValue:&_value]
+
 static s7_pointer objc_id_apply(s7_scheme *sc, s7_pointer obj, s7_pointer args)
 {
   id object = s7_object_value(obj);
@@ -225,7 +228,7 @@ static s7_pointer objc_id_apply(s7_scheme *sc, s7_pointer obj, s7_pointer args)
         //NSUInteger length = [sig frameLength];
         //buffer = malloc(length);
         //memcpy(buffer, s7_object_value(a), length);
-        void *p = s7_object_value(a);
+        void *p = s7_c_pointer(a);
         [inv setArgument:p atIndex:i];
         break;        
       }
@@ -234,9 +237,87 @@ static s7_pointer objc_id_apply(s7_scheme *sc, s7_pointer obj, s7_pointer args)
     i++;
   }
   [inv invoke];
-  id result = nil;
-  [inv getReturnValue:&result];
-  return s7_make_object(sc, objc_id_type_tag, result);
+  // convert result
+  switch ([sig methodReturnType][0]) {
+    case _C_ID:
+    case _C_CLASS: {
+      get_return_value(id);
+      return s7_make_object(sc, objc_id_type_tag, _value);
+    }
+    case _C_CHAR: {
+      get_return_value(char);
+      if (_value == YES || _value == NO)
+        return s7_make_boolean(sc, _value);
+      else
+        return s7_make_integer(sc, _value);
+    }
+    case _C_C99_BOOL: {
+      get_return_value(_Bool);
+      return s7_make_boolean(sc, _value);
+    }
+    case _C_UNSIGNED_CHAR: {
+      get_return_value(unsigned char);
+      return s7_make_integer(sc, _value);
+    }
+    case _C_SHORT: {
+      get_return_value(short);
+      return s7_make_integer(sc, _value);
+    }
+    case _C_UNSIGNED_SHORT: {
+      get_return_value(unsigned short);
+      return s7_make_integer(sc, _value);
+    }
+    case _C_INT: {
+      get_return_value(int);
+      return s7_make_integer(sc, _value);
+    }
+    case _C_UNSIGNED_INT: {
+      get_return_value(unsigned int);
+      return s7_make_integer(sc, _value);
+    }
+    case _C_LONG: {
+      get_return_value(long);
+      return s7_make_integer(sc, _value);
+    }
+    case _C_UNSIGNED_LONG: {
+      get_return_value(unsigned long);
+      return s7_make_integer(sc, _value);
+    }
+    case _C_LONG_LONG: {
+      get_return_value(long long);
+      return s7_make_integer(sc, _value);
+    }
+    case _C_UNSIGNED_LONG_LONG: {
+      get_return_value(unsigned long long);
+      return s7_make_integer(sc, _value);
+    }
+    case _C_DOUBLE: {
+      get_return_value(double);
+      return s7_make_real(sc, _value);
+    }
+    case _C_FLOAT: {
+      get_return_value(float);
+      return s7_make_real(sc, _value);
+    }
+    case _C_STRING: {
+      NSUInteger len = [[inv methodSignature] methodReturnLength];
+      char *buf = malloc(len);
+      [inv getReturnValue:&buf];
+      s7_pointer p = s7_make_string_with_length(sc, buf, len);
+      free(buf);
+      return p;
+    }
+    case _C_ARRAY:
+    case _C_STRUCT:
+    case _C_SELECTOR: {
+      void *value = malloc([[inv methodSignature] methodReturnLength]);
+      [inv getReturnValue:(void *)value];
+      return s7_make_c_pointer(sc, value);
+      //TODO will s7 free this pointer for us?
+    }
+    case _C_VOID:
+      return s7_nil(sc);
+  }
 }
 
 static char *print_objc_object(s7_scheme *sc, void *val)
@@ -267,6 +348,27 @@ static s7_pointer objc_string_to_string(s7_scheme *sc, s7_pointer args)
   return s7_make_string(sc, [(NSString *)s7_object_value(s7_car(args)) UTF8String]);
 }
 
+static s7_pointer objc_framework(s7_scheme *sc, s7_pointer args)
+{
+  NSString *libraryPath = [@"/" stringByAppendingPathComponent:[NSString pathWithComponents:[NSArray arrayWithObjects:@"Library", @"Frameworks", nil]]];
+  //TODO bundleLibraryPath
+  NSString *userLibraryPath = [NSHomeDirectory() stringByAppendingPathComponent:libraryPath];
+  NSString *systemLibraryPath = [@"/System" stringByAppendingPathComponent:libraryPath];
+  NSArray *paths = [NSArray arrayWithObjects:userLibraryPath, libraryPath, systemLibraryPath, nil];
+  NSString *name = [NSString stringWithUTF8String:s7_string(s7_car(args))];
+  NSString *filename = [name stringByAppendingPathExtension:@"framework"];
+  
+  for (NSString *path in paths) {
+    if ([[NSBundle bundleWithPath:[path stringByAppendingPathComponent:filename]] load])
+      return s7_make_boolean(sc, YES); // loaded
+  }
+  // try plain name, maybe it's already specified as a full path (incl. extension)
+  if ([[NSBundle bundleWithPath:name] load]) {
+    return s7_make_boolean(sc, YES); // loaded
+  }
+  // error loading
+  return s7_make_boolean(sc, NO);
+}
 
 @implementation Scheme
 @synthesize scheme=scheme_;
@@ -303,6 +405,8 @@ static s7_pointer objc_string_to_string(s7_scheme *sc, s7_pointer args)
   s7_define_function(scheme_, "string->objc:string", string_to_objc_string, 1, 0, false, "(string->objc:string \"string\") convert Scheme string to Objective-C NSString");
 
   s7_define_function(scheme_, "objc:string->string", objc_string_to_string, 1, 0, false, "(objc:string->string objc:object-NSString) convert Objective-C NSString to Scheme string");
+
+  s7_define_function(scheme_, "objc:framework", objc_framework, 1, 0, false, "(objc:framework \"name\") load Objective-C framework");
 }
 
 - (void)finalize
