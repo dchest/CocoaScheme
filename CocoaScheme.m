@@ -24,18 +24,18 @@ int main (int argc, const char *argv[])
     // prepare some helpers
     [sc evalString:@"(defmacro class (name)"
                     " `(string->objc:class (symbol->string ',name)))"];
-    [sc evalString:@"(define that ())"];
+    [sc evalString:@"(define that ())"]; // variable to hold last evaluation result
     
     char buffer[512];
     NSMutableString *s = [[NSMutableString alloc] init];
-    while (1)                           /* fire up a REPL */
+    while (1)
     {
-      fprintf(stdout, "> ");        /* prompt for input */
+      fprintf(stdout, "> ");
       fgets(buffer, 512, stdin);
       if (feof(stdin))
         return 0;
       [s appendFormat:@"%s", buffer];
-      // count parentheses
+      // count parentheses to decide if expression is complete
       int parentheses = 0;
       for (int i = 0; i < [s length]; i++) {
         unichar c = [s characterAtIndex:i];
@@ -50,7 +50,7 @@ int main (int argc, const char *argv[])
       }
       
       if ([s length] > 0 && [s characterAtIndex:0] != '\n') {
-        [sc evalString:[NSString stringWithFormat:@"(begin (set! that %@) (write that))", s]];
+        [sc evalString:[NSString stringWithFormat:@"(let ((res %@)) (write res) (set! that res))", s]];
         [s setString:@""];
         printf("\n");
       }
