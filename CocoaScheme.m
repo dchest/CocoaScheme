@@ -25,6 +25,7 @@ int main (int argc, const char *argv[])
     [sc evalString:@"(defmacro class (name)"
                     " `(string->objc:class (symbol->string ',name)))"];
     [sc evalString:@"(define that ())"]; // variable to hold last evaluation result
+    [sc evalString:@"(define thatexpr ())"]; // variable to hold last expression
     
     char buffer[2048];
     NSMutableString *s = [[NSMutableString alloc] init];
@@ -50,7 +51,7 @@ int main (int argc, const char *argv[])
       }
       
       if ([s length] > 0 && [s characterAtIndex:0] != '\n') {
-        [sc evalString:[NSString stringWithFormat:@"(let ((res %@)) (write res) (set! that res))", s]];
+        [sc evalString:[NSString stringWithFormat:@"(let ((res %@)) (write res) (set! that res) (set! thatexpr `%@))", s, s]];
         [s setString:@""];
         printf("\n");
       }
