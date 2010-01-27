@@ -47,7 +47,7 @@
       (go (- n 1))))
 
 ;(go 20000)
-(display ((class NSNumber) numberWithInteger: 42))
+(display ((class NSNumber) number-with-integer: 42))
 (newline)
 (display (str current-directory-path))
 (newline)
