@@ -56,10 +56,18 @@
   (objc:add-method klass "testMe" "v@:")
   (objc:register-class-pair klass))
 
-(define (objc:MyObject:testMe) 
-  (display "IT WORKS!"))
+(define (objc:MyObject:testMe)
+  (display "IT WORKS!\n"))
+
+(define (objc:MySubObject:testMe)
+  (display "sub works too!\n"))
+
+(let ((klass (objc:allocate-class-pair "MySubObject" (class MyObject))))
+  (objc:add-method klass "testMe" "v@:")
+  (objc:register-class-pair klass))
 
 ((((class MyObject) 'alloc) 'init) 'testMe)
+((((class MySubObject) 'alloc) 'init) 'super_testMe)
 
 ;--------------------
 ; GOAL, not implemented:

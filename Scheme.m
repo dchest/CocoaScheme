@@ -365,6 +365,10 @@ id invokeSchemeProcedure(id self, SEL _cmd, ...)
   NSString *selName = NSStringFromSelector(_cmd);
   // Lookup objc:Class:selName in Scheme
   id obj = self;
+  if ([selName hasPrefix:@"super_"]) {
+    obj = [self superclass];
+    selName = [selName stringByReplacingCharactersInRange:NSMakeRange(0, 6 /*_super*/) withString:@""];
+  }
   id oldObj = nil;
   s7_pointer proc;
   do {
@@ -391,6 +395,16 @@ static s7_pointer objc_add_method(s7_scheme *sc, s7_pointer args)
   Class klass         = s7_pointer_to_id(sc, s7_car(args));
   const char *selName = s7_string(s7_car(s7_cdr(args)));
   const char *types   = s7_string(s7_car(s7_cdr(s7_cdr(args))));
+  
+  // Create an alias for super-method
+  IMP superIMP = class_getMethodImplementation(class_getSuperclass(klass), sel_registerName(selName));
+  if (superIMP != NULL) {
+    // register super method with a new name
+    NSString *superSelName = [NSString stringWithFormat:@"super_%s", selName];
+    if (!class_addMethod(klass , NSSelectorFromString(superSelName), superIMP, types))
+      NSLog(@"cannot re-register supermethod super_%s", selName);
+  }
+    
   return s7_make_boolean(sc, class_addMethod(klass, sel_registerName(selName), (IMP)invokeSchemeProcedure, types));
 }
 
