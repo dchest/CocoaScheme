@@ -1829,6 +1829,18 @@ s7_pointer s7_make_symbol(s7_scheme *sc, const char *name)
   return(symbol_table_add_by_name_at_location(sc, name, location)); 
 } 
 
+s7_pointer s7_get_symbol_value(s7_scheme *sc, const char *name) 
+{ 
+  s7_pointer x; 
+  int location;
+  location = symbol_table_hash(name, vector_length(sc->symbol_table)); 
+  x = symbol_table_find_by_name(sc, name, location); 
+  if (x != sc->NIL) 
+    return(s7_symbol_value(sc, x));
+  else
+    return sc->NIL;
+} 
+
 
 s7_pointer s7_gensym(s7_scheme *sc, const char *prefix)
 { 

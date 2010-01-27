@@ -839,6 +839,10 @@ void s7_mark_object(s7_pointer p);
 #endif
 
 
+/* CocoaScheme additions */
+
+s7_pointer s7_get_symbol_value(s7_scheme *sc, const char *name);
+
 
 /* --------------------------------------------------------------------------------
  * 
