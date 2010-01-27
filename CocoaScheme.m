@@ -1,4 +1,6 @@
 #import <Foundation/Foundation.h>
+#include <readline/readline.h>
+#include <readline/history.h>
 #import "Scheme.h"
 
 /*
@@ -30,15 +32,14 @@ int main (int argc, const char *argv[])
   [sc evalString:@"(define that ())"]; // variable to hold last evaluation result
   [sc evalString:@"(define thatexpr ())"]; // variable to hold last expression
   
-  char buffer[2048];
   NSMutableString *s = [[NSMutableString alloc] init];
   while (1)
   {
-    fprintf(stdout, "> ");
-    fgets(buffer, 2048, stdin);
-    if (feof(stdin))
+    char *buffer = readline("> ");
+    if (buffer == NULL)
       return 0;
     [s appendFormat:@"%s", buffer];
+    free(buffer);
     // count parentheses to decide if expression is complete
     int parentheses = 0;
     for (int i = 0; i < [s length]; i++) {
