@@ -7,6 +7,7 @@
 //
 
 #import "Scheme.h"
+#import <ObjC/runtime.h>
 
 // C types
 // We don't use @encode because it gives a char *, but we need a single char for 'switch'
@@ -230,7 +231,7 @@ static s7_pointer objc_id_apply(s7_scheme *sc, s7_pointer obj, s7_pointer args)
         //memcpy(buffer, s7_object_value(a), length);
         void *p = s7_c_pointer(a);
         [inv setArgument:p atIndex:i];
-        break;        
+        break;
       }
     }
     tmpargs = s7_cdr(tmpargs);
@@ -338,8 +339,63 @@ static bool equal_objc_id(void *val1, void *val2)
   return (bool)[(id)val1 isEqual:(id)val2];
 }
 
+/* Creating classes */
+
+static s7_pointer objc_allocate_class_pair(s7_scheme *sc, s7_pointer args)
+{
+  const char *name = s7_string(s7_car(args));
+  Class superclass = s7_pointer_to_id(sc, s7_car(s7_cdr(args)));
+  Class klass = objc_allocateClassPair(superclass, name, 0);
+  if (klass == Nil)
+    return s7_nil(sc);
+  else
+    return s7_make_object(sc, objc_id_type_tag, klass);
+}
+
+static s7_pointer objc_register_class_pair(s7_scheme *sc, s7_pointer args)
+{
+  Class klass = s7_pointer_to_id(sc, s7_car(args));
+  objc_registerClassPair(klass);
+  return s7_nil(sc);
+}
+
+id invokeSchemeProcedure(id self, SEL _cmd, ...)
+{
+  s7_scheme *sc = sharedScheme->scheme_;
+  NSString *selName = NSStringFromSelector(_cmd);
+  // Lookup objc:Class:selName in Scheme
+  id obj = self;
+  id oldObj = nil;
+  s7_pointer proc;
+  do {
+    NSString *className = [obj className];
+    const char *sym = [[NSString stringWithFormat:@"objc:%@:%@", className, selName] UTF8String];
+    proc = s7_get_symbol_value(sc, sym);
+    if (proc == s7_nil(sc)) {
+      oldObj = obj;
+      obj = [self superclass];      
+    }
+  } while (proc == s7_nil(sc) && obj != Nil && oldObj != obj);
+  
+  if (proc == s7_nil(sc)) {
+    NSLog(@"Method [%@ %@] not found", [self className], selName);
+    return nil;
+  } else {
+    s7_call(sc, proc, s7_nil(sc));
+    return @"haha";
+  }
+}
+
+static s7_pointer objc_add_method(s7_scheme *sc, s7_pointer args)
+{
+  Class klass         = s7_pointer_to_id(sc, s7_car(args));
+  const char *selName = s7_string(s7_car(s7_cdr(args)));
+  const char *types   = s7_string(s7_car(s7_cdr(s7_cdr(args))));
+  return s7_make_boolean(sc, class_addMethod(klass, sel_registerName(selName), (IMP)invokeSchemeProcedure, types));
+}
 
 /* Utility */
+
 
 static s7_pointer string_to_objc_string(s7_scheme *sc, s7_pointer args)
 {
@@ -360,7 +416,7 @@ static s7_pointer objc_framework(s7_scheme *sc, s7_pointer args)
   NSArray *paths = [NSArray arrayWithObjects:userLibraryPath, libraryPath, systemLibraryPath, nil];
   NSString *name = [NSString stringWithUTF8String:s7_string(s7_car(args))];
   NSString *filename = [name stringByAppendingPathExtension:@"framework"];
-  
+
   for (NSString *path in paths) {
     if ([[NSBundle bundleWithPath:[path stringByAppendingPathComponent:filename]] load])
       return s7_make_boolean(sc, YES); // loaded
@@ -410,6 +466,12 @@ static s7_pointer objc_framework(s7_scheme *sc, s7_pointer args)
   s7_define_function(scheme_, "objc:string->string", objc_string_to_string, 1, 0, false, "(objc:string->string objc:id-NSString) convert Objective-C NSString to Scheme string");
 
   s7_define_function(scheme_, "objc:framework", objc_framework, 1, 0, false, "(objc:framework \"name\") load Objective-C framework");
+
+  s7_define_function(scheme_, "objc:allocate-class-pair", objc_allocate_class_pair, 2, 0, false, "(objc:allocate-class-pair \"name\" superclass) allocate Objective-C class pair");
+
+  s7_define_function(scheme_, "objc:register-class-pair", objc_register_class_pair, 1, 0, false, "(objc:register-class-pair class) register previously allocated Objective-C class pair");
+
+  s7_define_function(scheme_, "objc:add-method", objc_add_method, 3, 0, false, "(objc:add-method class \"methodName\" \"types\") add method to class");
 }
 
 - (void)finalize

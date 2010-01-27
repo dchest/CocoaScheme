@@ -10,6 +10,7 @@
 #import "s7.h"
 
 @interface Scheme : NSObject {
+@public
   s7_scheme *scheme_;
 }
 @property(readonly, nonatomic) s7_scheme *scheme;

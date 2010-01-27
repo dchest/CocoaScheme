@@ -27,16 +27,16 @@
         ((symbol? x) (symbol->string x))
         ((number? x) (number->string x))
         ((objc:id? x)
-          (if (eqv? 1 (x is-kind-of-class: (class NSString))) ; doesn't work yet, need
-            (objc:string->string x)                        ; to return BOOL values
-            (objc:string->string (x 'description)))) ))    ; from selectors;
-                                                           ; always returns description
+          (if (x is-kind-of-class: (class NSString))
+            (objc:string->string x)
+            (objc:string->string (x 'description)))) ))
+
 ;; Test App
 
 (define file-manager
   ((class NSFileManager) 'default-manager))
 
-(define current-directory-path
+(define (current-directory-path)
   (file-manager 'current-directory-path))
 
 (define (go n)
@@ -49,8 +49,17 @@
 ;(go 20000)
 (display ((class NSNumber) number-with-integer: 42))
 (newline)
-(display (str current-directory-path))
+(display (str (current-directory-path)))
 (newline)
+
+(let ((klass (objc:allocate-class-pair "MyObject" (class NSObject))))
+  (objc:add-method klass "testMe" "v@:")
+  (objc:register-class-pair klass))
+
+(define (objc:MyObject:testMe) 
+  (display "IT WORKS!"))
+
+((((class MyObject) 'alloc) 'init) 'testMe)
 
 ;--------------------
 ; GOAL, not implemented:
