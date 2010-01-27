@@ -2281,6 +2281,28 @@ static s7_pointer s7_find_value_in_environment(s7_scheme *sc, s7_pointer val)
   return(sc->F); 
 } 
 
+static s7_pointer s7_find_value_in_global_environment(s7_scheme *sc, s7_pointer val)
+{ 
+  s7_pointer x, y, vec; 
+  for (x = sc->global_env; (x != sc->NIL) && (!s7_is_vector(car(x))); x = cdr(x)) 
+    for (y = car(x); y != sc->NIL; y = cdr(y)) 
+      if (cdr(car(y)) == val)
+        return(car(y));
+  
+  if (s7_is_vector(car(x)))
+  {
+    int i, len;
+    vec = car(x);
+    len = vector_length(vec);
+    for (i = 0; i < len; i++)
+      if (vector_element(vec, i) != sc->NIL)
+        for (y = vector_element(vec, i); y != sc->NIL; y = cdr(y)) 
+          if (cdr(car(y)) == val)
+            return(car(y));
+  }
+  return(sc->F); 
+} 
+
 
 
 /* -------- keywords -------- */
@@ -8966,9 +8988,15 @@ static char *s7_atom_to_c_string(s7_scheme *sc, s7_pointer obj, bool use_write)
       {
 	/* try to find obj in the current environment and return its name */
 	s7_pointer binding;
-	binding = s7_find_value_in_environment(sc, obj);
-	if (is_pair(binding))
-	  return(s7_strdup(symbol_name(car(binding))));
+	binding = s7_find_value_in_global_environment(sc, obj);
+  if (!is_pair(binding))
+    binding = s7_find_value_in_environment(sc, obj);
+	if (is_pair(binding)) {
+    char *buf;
+    buf = (char *)calloc(512, sizeof(char));
+    snprintf(buf, 512, "#<closure:%s>", symbol_name(car(binding)));
+    return(buf);
+  }
 	return(s7_strdup("#<closure>"));
       }
   
