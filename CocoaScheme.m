@@ -51,7 +51,7 @@ int main (int argc, const char *argv[])
       }
       
       if ([s length] > 0 && [s characterAtIndex:0] != '\n') {
-        [sc evalString:[NSString stringWithFormat:@"(let ((res %@)) (write res) (set! that res) (set! thatexpr `%@))", s, s]];
+        [sc evalString:[NSString stringWithFormat:@"(let ((_expr %@)) (write _expr) (set! that _expr) (set! thatexpr `%@))", s, s]];
         [s setString:@""];
         printf("\n");
       }
