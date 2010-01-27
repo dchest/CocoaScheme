@@ -8952,9 +8952,12 @@ static char *s7_atom_to_c_string(s7_scheme *sc, s7_pointer obj, bool use_write)
 	return(p);
       }
   
+    case T_PROCEDURE:
+      return(s7_strdup("#<procedure>"));
+    
     case T_SYMBOL:
       return(s7_strdup(symbol_name(obj)));
-  
+        
     case T_MACRO:
       return(s7_strdup("#<macro>"));
   
@@ -8969,9 +8972,12 @@ static char *s7_atom_to_c_string(s7_scheme *sc, s7_pointer obj, bool use_write)
 	return(s7_strdup("#<closure>"));
       }
   
-    case T_C_FUNCTION:
-      return(s7_strdup(c_function_name(obj)));
-
+    case T_C_FUNCTION: {
+      char *buf;
+      buf = (char *)calloc(512, sizeof(char));
+      snprintf(buf, 512, "#<procedure:%s>", c_function_name(obj));
+      return(buf);
+    }
     case T_C_MACRO:
       return(s7_strdup(c_macro_name(obj)));
   
