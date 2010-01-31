@@ -94,16 +94,6 @@ static s7_pointer string_to_objc_class(s7_scheme *sc, s7_pointer args)
 }
 
 
-static s7_pointer make_objc_object(s7_scheme *sc, s7_pointer args)
-{
-  if (args == s7_nil(sc))
-    return s7_nil(sc);
-
-  Class klass = (Class)s7_object_value(s7_car(args));
-
-  return s7_make_object(sc, objc_id_type_tag, (void *)[klass alloc]);
-}
-
 static s7_pointer is_objc_object(s7_scheme *sc, s7_pointer args)
 {
   return(s7_make_boolean(sc, s7_is_object(s7_car(args))
@@ -378,7 +368,7 @@ static s7_pointer objc_id_apply(s7_scheme *sc, s7_pointer obj, s7_pointer args)
 
 static char *print_objc_object(s7_scheme *sc, void *val)
 {
-  return strdup([[NSString stringWithFormat:@"#<objc:id {%@} %@>", [(id)val className], [(id)val description]] UTF8String]);
+  return strdup([[NSString stringWithFormat:@"#<objc:id %@:%@>", [(id)val className], [(id)val description]] UTF8String]);
 }
 
 static void free_objc_object(void *obj)
@@ -680,17 +670,6 @@ static s7_pointer objc_add_method(s7_scheme *sc, s7_pointer args)
 
 /* Utility */
 
-
-static s7_pointer string_to_objc_string(s7_scheme *sc, s7_pointer args)
-{
-  return s7_make_object(sc, objc_id_type_tag, [NSString stringWithUTF8String:s7_string(s7_car(args))]);
-}
-
-static s7_pointer objc_string_to_string(s7_scheme *sc, s7_pointer args)
-{
-  return s7_make_string(sc, [(NSString *)s7_object_value(s7_car(args)) UTF8String]);
-}
-
 static s7_pointer objc_framework(s7_scheme *sc, s7_pointer args)
 {
   NSString *libraryPath = [@"/" stringByAppendingPathComponent:[NSString pathWithComponents:[NSArray arrayWithObjects:@"Library", @"Frameworks", nil]]];
@@ -739,23 +718,17 @@ static s7_pointer objc_framework(s7_scheme *sc, s7_pointer args)
   objc_id_type_tag = s7_new_type("objc:id", print_objc_object, free_objc_object, equal_objc_id, NULL, objc_id_apply, NULL);
 
   s7_define_function(scheme_, "string->objc:class", string_to_objc_class, 1, 0, false,
-                     "(make-objc:class \"NSObject\") returns an Objective-C Class");
+                     "(string->objc:class str) returns an Objective-C class named str");
 
-  s7_define_function(scheme_, "alloc-objc:id", make_objc_object, 1, 0, false, "(alloc-objc:id class) allocs and returns an Objective-C object");
+  s7_define_function(scheme_, "objc:id?", is_objc_object, 1, 0, false, "(objc:id? obj) returns #t if obj is Objective-C id (object or class)");
 
-  s7_define_function(scheme_, "objc:id?", is_objc_object, 1, 0, false, "(objc:id? value) returns #t if its argument is an Objective-C id (object or class)");
+  s7_define_function(scheme_, "objc:framework", objc_framework, 1, 0, false, "(objc:framework name) load Objective-C framework");
 
-  s7_define_function(scheme_, "string->objc:string", string_to_objc_string, 1, 0, false, "(string->objc:string \"string\") convert Scheme string to Objective-C NSString");
-
-  s7_define_function(scheme_, "objc:string->string", objc_string_to_string, 1, 0, false, "(objc:string->string objc:id-NSString) convert Objective-C NSString to Scheme string");
-
-  s7_define_function(scheme_, "objc:framework", objc_framework, 1, 0, false, "(objc:framework \"name\") load Objective-C framework");
-
-  s7_define_function(scheme_, "objc:allocate-class-pair", objc_allocate_class_pair, 2, 0, false, "(objc:allocate-class-pair \"name\" superclass) allocate Objective-C class pair");
+  s7_define_function(scheme_, "objc:allocate-class-pair", objc_allocate_class_pair, 2, 0, false, "(objc:allocate-class-pair name superclass) allocate Objective-C class pair");
 
   s7_define_function(scheme_, "objc:register-class-pair", objc_register_class_pair, 1, 0, false, "(objc:register-class-pair class) register previously allocated Objective-C class pair");
 
-  s7_define_function(scheme_, "objc:add-method", objc_add_method, 3, 0, false, "(objc:add-method class \"methodName\" \"types\") add method to class");
+  s7_define_function(scheme_, "objc:add-method", objc_add_method, 3, 0, false, "(objc:add-method class methodname types) add method methodname (string) with types (string) to class (objc:id)");
 }
 
 - (void)finalize
