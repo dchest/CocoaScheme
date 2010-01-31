@@ -19,17 +19,15 @@
 
 ;; Helpers
 
-(define (@ x)
-  (string->objc:string x))
+(define (only fn lst)
+  "(only fn lst) returns list of all elements of lst that evaluate to #t when applied to fn"
+  (if (null? lst)
+      ()
+      (if (fn (car lst))
+          (cons (car lst) (only fn (cdr lst)))
+          (only fn (cdr lst)))))
 
-(define (str x)
-  (cond ((string? x) x)
-        ((symbol? x) (symbol->string x))
-        ((number? x) (number->string x))
-        ((objc:id? x)
-          (if (x is-kind-of-class: (class NSString))
-            (objc:string->string x)
-            (objc:string->string (x 'description)))) ))
+(display (only odd? '(1 2 3 4 5 6 7)))
 
 ;; Test App
 
@@ -49,7 +47,7 @@
 ;(go 20000)
 (display ((class NSNumber) number-with-integer: 42))
 (newline)
-(display (str (current-directory-path)))
+(display (current-directory-path))
 (newline)
 
 (let ((klass (objc:allocate-class-pair "MyObject" (class NSObject))))
@@ -60,6 +58,9 @@
   (display x)
   (newline)
   13.3)
+
+;(defclass MyObject
+;  (- (double testMe: double)
 
 ;(define (objc:MySubObject:testMe)
 ;  (display "sub works too!\n"))
