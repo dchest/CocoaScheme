@@ -53,21 +53,21 @@
 (newline)
 
 (let ((klass (objc:allocate-class-pair "MyObject" (class NSObject))))
-  (objc:add-method klass "testMe" "v@:")
+  (objc:add-method klass "testMe:" "v@:d")
   (objc:register-class-pair klass))
 
-(define (objc:MyObject:testMe)
-  (display "IT WORKS!\n"))
+(define (objc:MyObject:testMe: x)
+  (display x))
 
-(define (objc:MySubObject:testMe)
-  (display "sub works too!\n"))
+;(define (objc:MySubObject:testMe)
+;  (display "sub works too!\n"))
 
-(let ((klass (objc:allocate-class-pair "MySubObject" (class MyObject))))
-  (objc:add-method klass "testMe" "v@:")
-  (objc:register-class-pair klass))
+;(let ((klass (objc:allocate-class-pair "MySubObject" (class MyObject))))
+;  (objc:add-method klass "testMe:" "v@:d")
+;  (objc:register-class-pair klass))
 
-((((class MyObject) 'alloc) 'init) 'testMe)
-((((class MySubObject) 'alloc) 'init) 'super_testMe)
+((((class MyObject) 'alloc) 'init) testMe: 14.2)
+;((((class MySubObject) 'alloc) 'init) unknownMethod: 10.4)
 
 ;--------------------
 ; GOAL, not implemented:

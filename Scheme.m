@@ -384,9 +384,99 @@ id invokeSchemeProcedure(id self, SEL _cmd, ...)
   if (proc == s7_nil(sc)) {
     NSLog(@"Method [%@ %@] not found", [self className], selName);
     return nil;
-  } else {
-    s7_call(sc, proc, s7_nil(sc));
-    return @"haha";
+  }
+  // Convert arguments to Scheme
+  Method method = class_getInstanceMethod([self class], _cmd);
+  unsigned argNum = method_getNumberOfArguments(method);
+
+  va_list list;
+  va_start(list, _cmd);
+  char argType[255];
+  s7_pointer args = s7_nil(sc);
+
+  for(int i = 2; i < argNum; i++) {
+    method_getArgumentType(method, i, argType, 255);
+    switch (argType[0]) {
+      case _C_ID:
+      case _C_CLASS: {
+        id value = va_arg(list, id);
+        args = s7_cons(sc, s7_make_object(sc, objc_id_type_tag, value), args);
+        break;
+      }
+      case _C_CHAR:               /* these types are promoted to int */
+      case _C_UNSIGNED_CHAR:
+      case _C_SHORT:
+      case _C_UNSIGNED_SHORT:
+      case _C_INT: {
+        int c = va_arg(list, int);
+        args = s7_cons(sc, s7_make_integer(sc, c), args);
+        break;
+      }
+      case _C_UNSIGNED_INT: {
+        unsigned int c = va_arg(list, unsigned int);
+        args = s7_cons(sc, s7_make_integer(sc, c), args);
+        break;
+      }
+      case _C_LONG: {
+        long c = va_arg(list, long);
+        args = s7_cons(sc, s7_make_integer(sc, c), args);
+        break;
+      }
+      case _C_UNSIGNED_LONG: {
+        unsigned long c = va_arg(list, unsigned long);
+        args = s7_cons(sc, s7_make_integer(sc, c), args);
+        break;
+      }
+      case _C_LONG_LONG: {
+        long long c = va_arg(list, long long);
+        args = s7_cons(sc, s7_make_integer(sc, c), args);
+        break;
+      }
+      case _C_UNSIGNED_LONG_LONG: {
+        unsigned long long c = va_arg(list, unsigned long long);
+        args = s7_cons(sc, s7_make_integer(sc, c), args);
+        break;
+      }
+      case _C_FLOAT:        /* promoted to double */
+      case _C_DOUBLE: {
+        double c = va_arg(list, double);
+        args = s7_cons(sc, s7_make_real(sc, c), args);
+        break;
+      }
+    }
+  }
+  va_end(list);
+
+  s7_pointer result = s7_call(sc, proc, args);
+
+  // convert result to ObjC
+  char returnType[255];
+  method_getReturnType(method, returnType, 255);
+  switch (returnType[0]) {
+    case _C_VOID:
+      return nil;
+    case _C_ID:
+    case _C_CLASS:
+      return s7_pointer_to_id(sc, s7_car(result));
+    case _C_CHAR: {
+      if (s7_is_boolean(s7_car(result)))
+        return s7_boolean(sc, s7_car(result));
+      else
+        return s7_integer(s7_car(result));
+    }
+    case _C_UNSIGNED_CHAR:
+    case _C_SHORT:
+    case _C_UNSIGNED_SHORT:
+    case _C_INT:
+    case _C_UNSIGNED_INT:
+    case _C_LONG:
+    case _C_UNSIGNED_LONG:
+    case _C_LONG_LONG:
+    case _C_UNSIGNED_LONG_LONG:
+      return s7_integer(s7_car(result));
+    case _C_FLOAT:
+    case _C_DOUBLE:
+      return (int)s7_real(s7_car(result)); // TODO FIXME
   }
 }
 
