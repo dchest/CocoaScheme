@@ -359,7 +359,7 @@ static s7_pointer objc_register_class_pair(s7_scheme *sc, s7_pointer args)
   return s7_nil(sc);
 }
 
-id invokeSchemeProcedure(id self, SEL _cmd, ...)
+s7_pointer callSchemeProcedure(id self, SEL _cmd, va_list list)
 {
   s7_scheme *sc = sharedScheme->scheme_;
   NSString *selName = NSStringFromSelector(_cmd);
@@ -389,8 +389,6 @@ id invokeSchemeProcedure(id self, SEL _cmd, ...)
   Method method = class_getInstanceMethod([self class], _cmd);
   unsigned argNum = method_getNumberOfArguments(method);
 
-  va_list list;
-  va_start(list, _cmd);
   char argType[255];
   s7_pointer args = s7_nil(sc);
 
@@ -445,40 +443,107 @@ id invokeSchemeProcedure(id self, SEL _cmd, ...)
       }
     }
   }
-  va_end(list);
-
-  s7_pointer result = s7_call(sc, proc, args);
-
-  // convert result to ObjC
-  char returnType[255];
-  method_getReturnType(method, returnType, 255);
-  switch (returnType[0]) {
-    case _C_VOID:
-      return nil;
-    case _C_ID:
-    case _C_CLASS:
-      return s7_pointer_to_id(sc, s7_car(result));
-    case _C_CHAR: {
-      if (s7_is_boolean(s7_car(result)))
-        return s7_boolean(sc, s7_car(result));
-      else
-        return s7_integer(s7_car(result));
-    }
-    case _C_UNSIGNED_CHAR:
-    case _C_SHORT:
-    case _C_UNSIGNED_SHORT:
-    case _C_INT:
-    case _C_UNSIGNED_INT:
-    case _C_LONG:
-    case _C_UNSIGNED_LONG:
-    case _C_LONG_LONG:
-    case _C_UNSIGNED_LONG_LONG:
-      return s7_integer(s7_car(result));
-    case _C_FLOAT:
-    case _C_DOUBLE:
-      return (int)s7_real(s7_car(result)); // TODO FIXME
-  }
+  return s7_call(sc, proc, args);
 }
+
+#define callSchemeAndGetResult() \
+  s7_scheme *sc = sharedScheme->scheme_; \
+  Method method = class_getInstanceMethod([self class], _cmd); \
+  va_list list; \
+  va_start(list, _cmd); \
+  s7_pointer result = callSchemeProcedure(self, _cmd, list); \
+  va_end(list); \
+
+
+void void_invokeSchemeProcedure(id self, SEL _cmd, ...) 
+{
+  callSchemeAndGetResult();
+}
+
+id id_invokeSchemeProcedure(id self, SEL _cmd, ...) 
+{
+  callSchemeAndGetResult();
+  return s7_pointer_to_id(sc, result);
+}
+
+char char_invokeSchemeProcedure(id self, SEL _cmd, ...)
+{
+  callSchemeAndGetResult();
+  if (s7_is_boolean(result))
+    return s7_boolean(sc, result);
+  else
+    return s7_integer(result);
+}
+
+unsigned char uchar_invokeSchemeProcedure(id self, SEL _cmd, ...)
+{
+  callSchemeAndGetResult();
+  return s7_integer(result);
+}
+
+int int_invokeSchemeProcedure(id self, SEL _cmd, ...)
+{
+  callSchemeAndGetResult();
+  return s7_integer(result);
+}
+
+unsigned int uint_invokeSchemeProcedure(id self, SEL _cmd, ...)
+{
+  callSchemeAndGetResult();
+  return s7_integer(result);
+}
+
+short short_invokeSchemeProcedure(id self, SEL _cmd, ...)
+{
+  callSchemeAndGetResult();
+  return s7_integer(result);
+}
+
+unsigned short ushort_invokeSchemeProcedure(id self, SEL _cmd, ...)
+{
+  callSchemeAndGetResult();
+  return s7_integer(result);
+}
+
+long long_invokeSchemeProcedure(id self, SEL _cmd, ...)
+{
+  callSchemeAndGetResult();
+  return s7_integer(result);
+}
+
+unsigned long ulong_invokeSchemeProcedure(id self, SEL _cmd, ...)
+{
+  callSchemeAndGetResult();
+  return s7_integer(result);
+}
+
+long long longlong_invokeSchemeProcedure(id self, SEL _cmd, ...)
+{
+  callSchemeAndGetResult();
+  return s7_integer(result);
+}
+
+unsigned long long ulonglong_invokeSchemeProcedure(id self, SEL _cmd, ...)
+{
+  callSchemeAndGetResult();
+  return s7_integer(result);
+}
+
+float float_invokeSchemeProcedure(id self, SEL _cmd, ...)
+{
+  callSchemeAndGetResult();
+  return s7_real(result);
+}
+
+double double_invokeSchemeProcedure(id self, SEL _cmd, ...)
+{
+  callSchemeAndGetResult();
+  return s7_real(result);
+}
+
+#define addMethodWithIMP(func) \
+  s7_make_boolean(sc, class_addMethod(klass, sel_registerName(selName), (IMP)func, types));
+
 
 static s7_pointer objc_add_method(s7_scheme *sc, s7_pointer args)
 {
@@ -494,8 +559,41 @@ static s7_pointer objc_add_method(s7_scheme *sc, s7_pointer args)
     if (!class_addMethod(klass , NSSelectorFromString(superSelName), superIMP, types))
       NSLog(@"cannot re-register supermethod super_%s", selName);
   }
-    
-  return s7_make_boolean(sc, class_addMethod(klass, sel_registerName(selName), (IMP)invokeSchemeProcedure, types));
+  
+  // which IMP to add
+  switch (types[0]) {
+    case _C_VOID:
+      return addMethodWithIMP(void_invokeSchemeProcedure);
+    case _C_ID:
+    case _C_CLASS:
+      return addMethodWithIMP(id_invokeSchemeProcedure);
+    case _C_CHAR:
+      return addMethodWithIMP(char_invokeSchemeProcedure);
+    case _C_UNSIGNED_CHAR:
+      return addMethodWithIMP(uchar_invokeSchemeProcedure);
+    case _C_SHORT:
+      return addMethodWithIMP(short_invokeSchemeProcedure);
+    case _C_UNSIGNED_SHORT:
+      return addMethodWithIMP(ushort_invokeSchemeProcedure);
+    case _C_INT:
+      return addMethodWithIMP(int_invokeSchemeProcedure);
+    case _C_UNSIGNED_INT:
+      return addMethodWithIMP(uint_invokeSchemeProcedure);
+    case _C_LONG:
+      return addMethodWithIMP(long_invokeSchemeProcedure);
+    case _C_UNSIGNED_LONG:
+      return addMethodWithIMP(ulong_invokeSchemeProcedure);
+    case _C_LONG_LONG:
+      return addMethodWithIMP(longlong_invokeSchemeProcedure);
+    case _C_UNSIGNED_LONG_LONG:
+      return addMethodWithIMP(ulonglong_invokeSchemeProcedure);
+    case _C_FLOAT:
+      return addMethodWithIMP(float_invokeSchemeProcedure);
+    case _C_DOUBLE:
+      return addMethodWithIMP(double_invokeSchemeProcedure);
+    default:
+      return s7_make_boolean(sc, NO);
+  }
 }
 
 /* Utility */

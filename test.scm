@@ -53,11 +53,13 @@
 (newline)
 
 (let ((klass (objc:allocate-class-pair "MyObject" (class NSObject))))
-  (objc:add-method klass "testMe:" "v@:d")
+  (objc:add-method klass "testMe:" "d@:d")
   (objc:register-class-pair klass))
 
 (define (objc:MyObject:testMe: x)
-  (display x))
+  (display x)
+  (newline)
+  13.3)
 
 ;(define (objc:MySubObject:testMe)
 ;  (display "sub works too!\n"))
@@ -66,7 +68,7 @@
 ;  (objc:add-method klass "testMe:" "v@:d")
 ;  (objc:register-class-pair klass))
 
-((((class MyObject) 'alloc) 'init) testMe: 14.2)
+(display ((((class MyObject) 'alloc) 'init) testMe: 14.2))
 ;((((class MySubObject) 'alloc) 'init) unknownMethod: 10.4)
 
 ;--------------------
