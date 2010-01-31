@@ -493,6 +493,36 @@ s7_pointer callSchemeProcedure(id self, SEL _cmd, va_list list)
         args = s7_cons(sc, s7_make_real(sc, c), args);
         break;
       }
+      case _C_STRUCT: {
+        s7_pointer l = nil;
+        if (strstr(argType, "CGRect") != NULL) {
+          NSRect rect = va_arg(list, NSRect);
+          s7_pointer x = s7_make_real(sc, rect.origin.x);
+          s7_pointer y = s7_make_real(sc, rect.origin.y);
+          s7_pointer w = s7_make_real(sc, rect.size.width);
+          s7_pointer h = s7_make_real(sc, rect.size.height);
+          l = s7_cons(sc, x, s7_cons(sc, y, s7_cons(sc, w, s7_cons(sc, h, s7_nil(sc)))));
+        } else if (strstr(argType, "CGPoint") != NULL) {
+          NSPoint point = va_arg(list, NSPoint);
+          s7_pointer x = s7_make_real(sc, point.x);
+          s7_pointer y = s7_make_real(sc, point.y);
+          l = s7_cons(sc, x, s7_cons(sc, y, s7_nil(sc)));
+        } else if (strstr(argType, "CGSize") != NULL) {
+          NSSize size = va_arg(list, NSSize);
+          s7_pointer w = s7_make_real(sc, size.width);
+          s7_pointer h = s7_make_real(sc, size.height);
+          l = s7_cons(sc, w, s7_cons(sc, h, s7_nil(sc)));
+        } else if (strstr(argType, "NSRange") != NULL) {
+          NSRange range = va_arg(list, NSRange);
+          s7_pointer location = s7_make_integer(sc, range.location);
+          s7_pointer length = s7_make_integer(sc, range.length);
+          l = s7_cons(sc, location, s7_cons(sc, length, s7_nil(sc)));
+        }
+        if (l != nil)
+          args = s7_cons(sc, l, args);
+        else
+          NSLog(@"Unsupported struct %s in arguments", argType);
+      }
     }
   }
   return s7_call(sc, proc, s7_reverse(sc, args));
