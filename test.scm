@@ -69,6 +69,9 @@
 ;  (objc:register-class-pair klass))
 
 (display ((((class MyObject) 'alloc) 'init) testMe: 14.2))
+
+(objc:framework "Cocoa")
+(display ((((class NSButton) 'alloc) init-with-frame: '(20.24 30 100 200)) 'frame))
 ;((((class MySubObject) 'alloc) 'init) unknownMethod: 10.4)
 
 ;--------------------

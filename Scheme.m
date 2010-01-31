@@ -135,7 +135,7 @@ static id s7_pointer_to_id(s7_scheme *sc, s7_pointer p)
   if (s7_is_integer(p))
     return [NSNumber numberWithLongLong:s7_integer(p)];
   if (s7_is_real(p))
-    return [NSNumber numberWithDouble:s7_real(p)];
+    return [NSNumber numberWithDouble:s7_number_to_real(p)];
   if (s7_is_boolean(p))
     return [NSNumber numberWithBool:s7_boolean(sc, p)];
   if (s7_is_string(p))
@@ -215,16 +215,38 @@ static s7_pointer objc_id_apply(s7_scheme *sc, s7_pointer obj, s7_pointer args)
         setarg(unsigned long long, s7_integer(a), i, inv);
         break;
       case _C_DOUBLE:
-        setarg(double, s7_real(a), i, inv);
+        setarg(double, s7_number_to_real(a), i, inv);
         break;
       case _C_FLOAT:
-        setarg(float, s7_real(a), i, inv);
+        setarg(float, s7_number_to_real(a), i, inv);
         break;
       case _C_POINTER:
         setarg(void*, s7_object_value(a), i, inv);
         break;
+      case _C_STRUCT: {
+        const char *fulltype = [sig getArgumentTypeAtIndex:i];
+        if (strstr(fulltype, "CGRect") != NULL) {
+          NSRect rect = NSMakeRect(s7_number_to_real(s7_list_ref(sc, a, 0)),
+                                   s7_number_to_real(s7_list_ref(sc, a, 1)),
+                                   s7_number_to_real(s7_list_ref(sc, a, 2)),
+                                   s7_number_to_real(s7_list_ref(sc, a, 3)));
+          [inv setArgument:&rect atIndex:i];
+        } else if (strstr(fulltype, "CGPoint") != NULL) {
+          NSPoint point = NSMakePoint(s7_number_to_real(s7_list_ref(sc, a, 0)),
+                                    s7_number_to_real(s7_list_ref(sc, a, 1)));
+          [inv setArgument:&point atIndex:i];
+        } else if (strstr(fulltype, "CGSize") != NULL) {
+          NSSize size = NSMakeSize(s7_number_to_real(s7_list_ref(sc, a, 0)),
+                                      s7_number_to_real(s7_list_ref(sc, a, 1)));
+          [inv setArgument:&size atIndex:i];
+        } else if (strstr(fulltype, "NSRange") != NULL) {
+          NSRange range = NSMakeRange(s7_integer(s7_list_ref(sc, a, 0)),
+                                     s7_integer(s7_list_ref(sc, a, 1)));
+          [inv setArgument:&range atIndex:i];
+        }
+        break;
+      }
       case _C_ARRAY:
-      case _C_STRUCT:
       case _C_SELECTOR: {
         //NSUInteger length = [sig frameLength];
         //buffer = malloc(length);
@@ -311,8 +333,38 @@ static s7_pointer objc_id_apply(s7_scheme *sc, s7_pointer obj, s7_pointer args)
       free(buf);
       return p;
     }
+    case _C_STRUCT: {
+      const char *fulltype = [sig methodReturnType];
+      if (strstr(fulltype, "CGRect") != NULL) {
+        NSRect rect;
+        [inv getReturnValue:&rect];
+        s7_pointer x = s7_make_real(sc, rect.origin.x);
+        s7_pointer y = s7_make_real(sc, rect.origin.y);
+        s7_pointer w = s7_make_real(sc, rect.size.width);
+        s7_pointer h = s7_make_real(sc, rect.size.height);
+        return s7_cons(sc, x, s7_cons(sc, y, s7_cons(sc, w, s7_cons(sc, h, s7_nil(sc)))));
+      } else if (strstr(fulltype, "CGPoint") != NULL) {
+        NSPoint point;
+        [inv getReturnValue:&point];
+        s7_pointer x = s7_make_real(sc, point.x);
+        s7_pointer y = s7_make_real(sc, point.y);
+        return s7_cons(sc, x, s7_cons(sc, y, s7_nil(sc)));
+      } else if (strstr(fulltype, "CGSize") != NULL) {
+        NSSize size;
+        [inv getReturnValue:&size];
+        s7_pointer w = s7_make_real(sc, size.width);
+        s7_pointer h = s7_make_real(sc, size.height);
+        return s7_cons(sc, w, s7_cons(sc, h, s7_nil(sc)));
+      } else if (strstr(fulltype, "NSRange") != NULL) {
+        NSRange range;
+        [inv getReturnValue:&range];
+        s7_pointer location = s7_make_integer(sc, range.location);
+        s7_pointer length = s7_make_integer(sc, range.length);
+        return s7_cons(sc, location, s7_cons(sc, length, s7_nil(sc)));
+      }
+      // else fall-through
+    }
     case _C_ARRAY:
-    case _C_STRUCT:
     case _C_SELECTOR: {
       void *value = malloc([[inv methodSignature] methodReturnLength]);
       [inv getReturnValue:(void *)value];
@@ -443,7 +495,7 @@ s7_pointer callSchemeProcedure(id self, SEL _cmd, va_list list)
       }
     }
   }
-  return s7_call(sc, proc, args);
+  return s7_call(sc, proc, s7_reverse(sc, args));
 }
 
 #define callSchemeAndGetResult() \
@@ -532,13 +584,13 @@ unsigned long long ulonglong_invokeSchemeProcedure(id self, SEL _cmd, ...)
 float float_invokeSchemeProcedure(id self, SEL _cmd, ...)
 {
   callSchemeAndGetResult();
-  return s7_real(result);
+  return s7_number_to_real(result);
 }
 
 double double_invokeSchemeProcedure(id self, SEL _cmd, ...)
 {
   callSchemeAndGetResult();
-  return s7_real(result);
+  return s7_number_to_real(result);
 }
 
 #define addMethodWithIMP(func) \
