@@ -515,7 +515,9 @@ s7_pointer callSchemeProcedure(id self, SEL _cmd, va_list list)
       }
     }
   }
-  return s7_call(sc, proc, s7_reverse(sc, args));
+  // first argument to method is always self
+  args = s7_cons(sc, s7_make_object(sc, objc_id_type_tag, self), args);
+  return s7_call(sc, proc, args);
 }
 
 #define callSchemeAndGetResult() \

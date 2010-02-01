@@ -42,7 +42,7 @@
     (if (> n 0)
       (go (- n 1))))
 
-;(go 1000)
+;(go 20000)
 (display ((class NSNumber) number-with-integer: 42))
 (newline)
 (display (current-directory-path))
@@ -52,7 +52,7 @@
   (objc:add-method klass "testMe:" "d@:d")
   (objc:register-class-pair klass))
 
-(define (objc:MyObject:testMe: x)
+(define (objc:MyObject:testMe: self x)
   (display x)
   (newline)
   13.3)
