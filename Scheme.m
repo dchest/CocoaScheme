@@ -116,6 +116,11 @@ NSString *extract_selector_name(s7_scheme *sc, s7_pointer args)
   return [selectorName autorelease];
 }
 
+static s7_pointer objc_extract_selector(s7_scheme *sc, s7_pointer args)
+{
+  return s7_make_string(sc, [extract_selector_name(sc, args) UTF8String]);
+}
+
 static id s7_pointer_to_id(s7_scheme *sc, s7_pointer p)
 {
   if (s7_nil(sc) == p)
@@ -417,7 +422,7 @@ s7_pointer callSchemeProcedure(id self, SEL _cmd, va_list list)
   id obj = self;
   if ([selName hasPrefix:@"super_"]) {
     obj = [self superclass];
-    selName = [selName stringByReplacingCharactersInRange:NSMakeRange(0, 6 /*_super*/) withString:@""];
+    selName = [selName stringByReplacingCharactersInRange:NSMakeRange(0, 6 /*super_*/) withString:@""];
   }
   id oldObj = nil;
   s7_pointer proc;
@@ -739,6 +744,8 @@ static s7_pointer objc_framework(s7_scheme *sc, s7_pointer args)
   s7_define_function(scheme_, "objc:register-class-pair", objc_register_class_pair, 1, 0, false, "(objc:register-class-pair class) register previously allocated Objective-C class pair");
 
   s7_define_function(scheme_, "objc:add-method", objc_add_method, 3, 0, false, "(objc:add-method class methodname types) add method methodname (string) with types (string) to class (objc:id)");
+
+  s7_define_function(scheme_, "objc:extract-selector", objc_extract_selector, 1, 0, true, "(objc:extract-selector ...) return selector name extracted from list");
 }
 
 - (void)finalize

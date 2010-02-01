@@ -17,6 +17,11 @@
 (defmacro class (name)
   `(string->objc:class (symbol->string ',name)))
 
+(defmacro super (a . b)
+  `(if (self responds-to-selector: (string-append "super_" (objc:extract-selector ,a ,@b)))
+       (self (string->symbol (string-append "super_" (symbol->string ,a))) ,@b)
+       (self ,a ,@b)))
+
 ;; Helpers
 
 (define (only fn lst)
@@ -52,28 +57,64 @@
   (objc:add-method klass "testMe:" "d@:d")
   (objc:register-class-pair klass))
 
+
 (define (objc:MyObject:testMe: self x)
   (display x)
   (newline)
-  13.3)
+  (* x 100))
+
   
 ;(((class NSGarbageCollector) 'default-collector) 'collect-exhaustively)
 
-;(defclass MyObject
-;  (- (double testMe: double)
+  
 
-;(define (objc:MySubObject:testMe)
-;  (display "sub works too!\n"))
 
-;(let ((klass (objc:allocate-class-pair "MySubObject" (class MyObject))))
-;  (objc:add-method klass "testMe:" "v@:d")
-;  (objc:register-class-pair klass))
+;; TODO
+(defmacro defclass (name parent ivars . methods)
+  `(write 
+    (string-append "defining class: "
+                   (symbol->string ',name) " is "
+                   ((class ,parent) 'description) )) )
+
+;; Example of how it should work
+
+(defclass MyObject NSObject
+  
+  (IBOutlet id button)
+  (ivar double d)
+  (ivar NSRect frame)
+
+  (- ((void) webView: (id view) didFinishLoadForFrame: (id frame))
+     (display self)) 
+
+  (- ((void) description)
+     (super 'description))
+     
+)
+
+(define (objc:MySubObject:testMe: self x)
+  (display (string-append "---==> " (number->string (super testMe: 18))))
+  (display (super 'description))
+  (display "sub works too!\n"))
+
+(let ((klass (objc:allocate-class-pair "MySubObject" (class MyObject))))
+  (objc:add-method klass "testMe:" "d@:d")
+  (objc:register-class-pair klass))
 
 (display ((((class MyObject) 'alloc) 'init) testMe: 14.2))
 
+(newline)
+(let ((void "v")
+      (double "d")
+      (char "c")
+      (id "@"))
+      (display (format #f "~{~A~^~}" (list id void double))))
+
+(newline)
+
 (objc:framework "Cocoa")
 (display ((((class NSButton) 'alloc) init-with-frame: '(20.24 30 100 200)) 'frame))
-;((((class MySubObject) 'alloc) 'init) unknownMethod: 10.4)
+((((class MySubObject) 'alloc) 'init) testMe: 10.4)
 
 ;--------------------
 ; GOAL, not implemented:
