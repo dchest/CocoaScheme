@@ -236,13 +236,17 @@ static s7_pointer objc_id_apply(s7_scheme *sc, s7_pointer obj, s7_pointer args)
         }
         break;
       }
-      case _C_ARRAY:
-      case _C_SELECTOR: {
+      case _C_ARRAY: {
         //NSUInteger length = [sig frameLength];
         //buffer = malloc(length);
         //memcpy(buffer, s7_object_value(a), length);
         void *p = s7_c_pointer(a);
         [inv setArgument:p atIndex:i];
+        break;
+      }
+      case _C_SELECTOR: {
+        SEL selector = sel_registerName(s7_string(a));
+        [inv setArgument:&selector atIndex:i];
         break;
       }
     }
@@ -354,12 +358,16 @@ static s7_pointer objc_id_apply(s7_scheme *sc, s7_pointer obj, s7_pointer args)
       }
       // else fall-through
     }
-    case _C_ARRAY:
-    case _C_SELECTOR: {
+    case _C_ARRAY: {
       void *value = malloc([[inv methodSignature] methodReturnLength]);
       [inv getReturnValue:(void *)value];
       return s7_make_c_pointer(sc, value);
       //TODO will s7 free this pointer for us?
+    }
+    case _C_SELECTOR: {
+      SEL selector;
+      [inv getReturnValue:&selector];
+      return s7_make_string(sc, sel_getName(selector));
     }
     case _C_VOID:
       return s7_nil(sc);
