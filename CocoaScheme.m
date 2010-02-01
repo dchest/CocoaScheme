@@ -15,6 +15,7 @@
 
 int main (int argc, const char *argv[])
 {
+  objc_startCollectorThread();
   NSAutoreleasePool * pool = [[NSAutoreleasePool alloc] init];
   Scheme *sc = [Scheme sharedScheme];
 
@@ -58,6 +59,7 @@ int main (int argc, const char *argv[])
       [sc evalString:[NSString stringWithFormat:@"(let ((_expr %@)) (write _expr) (set! that _expr) (set! thatexpr `%@))", s, s]];
       [s setString:@""];
       printf("\n");
+      [[NSGarbageCollector defaultCollector] collectIfNeeded];
     }
   }
 

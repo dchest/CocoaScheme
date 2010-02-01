@@ -27,8 +27,6 @@
           (cons (car lst) (only fn (cdr lst)))
           (only fn (cdr lst)))))
 
-(display (only odd? '(1 2 3 4 5 6 7)))
-
 ;; Test App
 
 (define file-manager
@@ -44,7 +42,7 @@
     (if (> n 0)
       (go (- n 1))))
 
-;(go 20000)
+;(go 1000)
 (display ((class NSNumber) number-with-integer: 42))
 (newline)
 (display (current-directory-path))
@@ -58,6 +56,8 @@
   (display x)
   (newline)
   13.3)
+  
+;(((class NSGarbageCollector) 'default-collector) 'collect-exhaustively)
 
 ;(defclass MyObject
 ;  (- (double testMe: double)
